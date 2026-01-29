@@ -15,7 +15,7 @@ app.get("/", (req, res) => {
 // ------------------------
 // Import & mount routes
 // ------------------------
-const authRoutes = require("./routes/auth.routes");
+const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes); // All login routes start with /api/auth
 
 module.exports = app;

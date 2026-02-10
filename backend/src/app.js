@@ -18,4 +18,12 @@ app.get("/", (req, res) => {
 const authRoutes = require("./routes/authRoutes");
 app.use("/api/auth", authRoutes); // All login routes start with /api/auth
 
+const productRoutes = require('./routes/productRoutes');
+app.use('/api/products', productRoutes);
+
+const productStockRoutes = require('./routes/productStockRoutes');
+app.use('/api/stocks', productStockRoutes);
+
+
+
 module.exports = app;

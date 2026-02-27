@@ -16,14 +16,14 @@ app.get("/", (req, res) => {
 // Import & mount routes
 // ------------------------
 const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes); // All login routes start with /api/auth
+const userRoutes = require("./routes/userRoutes");
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
 
-const productRoutes = require('./routes/productRoutes');
-app.use('/api/products', productRoutes);
-
-const productStockRoutes = require('./routes/productStockRoutes');
-app.use('/api/stocks', productStockRoutes);
-
-
+// ------------------------
+// Swagger Documentation
+// ------------------------
+const { swaggerUi, specs } = require("./swagger"); 
+app.use("/api-docs", swaggerUi.serve, swaggerUi.setup(specs));
 
 module.exports = app;

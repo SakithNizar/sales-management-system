@@ -44,9 +44,21 @@ exports.protect = async (req, res, next) => {
  */
 exports.restrictTo = (...roles) => {
   return (req, res, next) => {
+    // 1. Check if the user's role is allowed
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Access denied" });
+      return res.status(403).json({ 
+        message: "Access denied: You do not have permission to perform this action" 
+      });
     }
+
+    // 2. Check if account was deactivated while logged in
+    if (req.user.status !== "active") {
+      return res.status(403).json({ 
+        message: "Your account has been deactivated. Please contact the admin." 
+      });
+    }
+
+    // 3. Everything is fine → call next middleware/controller
     next();
   };
 };

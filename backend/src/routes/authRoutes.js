@@ -34,10 +34,10 @@ const { protect } = require("../middlewares/authMiddleware");
  *             properties:
  *               username:
  *                 type: string
- *                 example: johndoe
+ *                 example: admin1
  *               password:
  *                 type: string
- *                 example: Password123!
+ *                 example: Admin1234
  *     responses:
  *       200:
  *         description: Login successful, returns JWT token

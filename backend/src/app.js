@@ -20,6 +20,16 @@ const userRoutes = require("./routes/userRoutes");
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 
+const productionProductRoutes = require("./routes/productionProduct.routes");
+app.use("/api/production-products", productionProductRoutes);
+
+const productionBatchRoutes = require("./routes/productionBatch.routes");
+app.use("/api/production-batches", productionBatchRoutes);
+
+const reportsRoutes = require("./routes/reports.routes");
+
+// All report routes will now be under /api/reports or /api/dashboard
+app.use("/api/reports", reportsRoutes);
 // ------------------------
 // Swagger Documentation
 // ------------------------

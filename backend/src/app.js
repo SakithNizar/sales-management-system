@@ -17,8 +17,11 @@ app.get("/", (req, res) => {
 // ------------------------
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/expenses", expenseRoutes);
 
 const productionProductRoutes = require("./routes/productionProduct.routes");
 app.use("/api/production-products", productionProductRoutes);

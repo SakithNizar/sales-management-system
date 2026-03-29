@@ -73,3 +73,19 @@ exports.login = async (req, res) => {
     });
   }
 };
+
+
+// =====================
+// LOGOUT USER
+// =====================
+exports.logout = async (req, res) => {
+  try {
+    // If using JWT in client (most likely your setup)
+    // Just tell client to remove token
+    res.status(200).json({
+      message: "Logout successful. Please remove token from client.",
+    });
+  } catch (err) {
+    res.status(500).json({ message: "Error logging out" });
+  }
+};

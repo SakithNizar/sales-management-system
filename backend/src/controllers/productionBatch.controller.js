@@ -1,7 +1,7 @@
 const ProductionBatch = require("../models/productionBatch.model");
-const ProductionProduct = require("../models/productionProduct.model");
+const Item = require("../models/item.model");
 
-/* Helper to generate batch number BY-1001, BY-1002... */
+/* Generate Batch No */
 const generateBatchNo = async () => {
   const lastBatch = await ProductionBatch.findOne().sort({ createdAt: -1 });
   if (!lastBatch) return "BY-1001";
@@ -9,7 +9,7 @@ const generateBatchNo = async () => {
   return `BY-${lastNum + 1}`;
 };
 
-/* Helper to generate invoice number PR-001, PR-002... */
+/* Generate Invoice No */
 const generateInvoiceNo = async () => {
   const lastBatch = await ProductionBatch.findOne().sort({ createdAt: -1 });
   if (!lastBatch) return "PR-001";
@@ -18,42 +18,50 @@ const generateInvoiceNo = async () => {
   return `PR-${next}`;
 };
 
-/* 1️⃣ Add Production Batch */
+/* 1. Add Production Batch */
 exports.addProductionBatch = async (req, res, next) => {
   try {
-    const { date, productId, quantity, unitCost, notes } = req.body;
+    const { date, itemId, quantity, unitCost, notes } = req.body;
 
-    if (!date || !productId || !quantity || !unitCost) {
+    if (!date || !itemId || !quantity || !unitCost) {
       return res.status(400).json({
-        message: "date, productId, quantity and unitCost are required",
+        message: "date, itemId, quantity and unitCost are required",
       });
     }
 
-    const product = await ProductionProduct.findById(productId);
-    if (!product) return res.status(404).json({ message: "Product not found" });
+    const item = await Item.findById(itemId);
+    if (!item) return res.status(404).json({ message: "Item not found" });
+
+    // VALIDATION: Only Finished Goods can be produced
+    if (item.category !== "Finished Good") {
+      return res.status(400).json({
+        message: "Only Finished Goods can be produced"
+      });
+    }
 
     const batchNo = await generateBatchNo();
     const invoiceNo = await generateInvoiceNo();
 
-    const totalCost = quantity * unitCost;
-
-    const expiryDate = new Date(date);
-    expiryDate.setDate(expiryDate.getDate() + product.shelfLifeDays);
+    // Calculate expiry date
+    let expiryDate = null;
+    if (item.shelfLifeDays > 0) {
+      expiryDate = new Date(date);
+      expiryDate.setDate(expiryDate.getDate() + item.shelfLifeDays);
+    }
 
     const productionBatch = await ProductionBatch.create({
       date,
-      product: productId,
+      item: itemId,
       batchNo,
       invoiceNo,
       quantity,
       unitCost,
-      totalCost,
       expiryDate,
       notes,
     });
 
     const result = await ProductionBatch.findById(productionBatch._id)
-      .populate("product", "name");
+      .populate("item", "name category unit");
 
     res.status(201).json(result);
   } catch (error) {
@@ -61,11 +69,11 @@ exports.addProductionBatch = async (req, res, next) => {
   }
 };
 
-/* 2️⃣ Get All Production Batches */
+/* 2. Get All Production Batches */
 exports.getProductionBatches = async (req, res, next) => {
   try {
     const batches = await ProductionBatch.find()
-      .populate("product","name")
+      .populate("item", "name category unit")
       .sort({ createdAt: -1 });
 
     res.json(batches);
@@ -74,41 +82,67 @@ exports.getProductionBatches = async (req, res, next) => {
   }
 };
 
-/* 3️⃣ Update Production Batch */
+/* 3. Get Single Batch */
+exports.getProductionBatch = async (req, res, next) => {
+  try {
+    const batch = await ProductionBatch.findById(req.params.id)
+      .populate("item", "name category unit");
+
+    if (!batch) {
+      return res.status(404).json({ message: "Batch not found" });
+    }
+
+    res.json(batch);
+  } catch (error) {
+    next(error);
+  }
+};
+
+/* 4. Update Production Batch */
 exports.updateProductionBatch = async (req, res, next) => {
   try {
     const batch = await ProductionBatch.findById(req.params.id);
     if (!batch) return res.status(404).json({ message: "Batch not found" });
 
-    const { date, productId, quantity, unitCost, status, notes } = req.body;
+    const { date, itemId, quantity, unitCost, status, notes } = req.body;
 
-    // Recalculate expiry if product or date changes
-    if (productId || date) {
-      const product = productId
-        ? await ProductionProduct.findById(productId)
-        : await ProductionProduct.findById(batch.product);
+    // If item changed
+    if (itemId) {
+      const item = await Item.findById(itemId);
+      if (!item) return res.status(404).json({ message: "Item not found" });
 
-      if (!product) return res.status(404).json({ message: "Product not found" });
+      if (item.category !== "Finished Good") {
+        return res.status(400).json({
+          message: "Only Finished Goods can be produced"
+        });
+      }
 
-      batch.product = productId || batch.product;
+      batch.item = itemId;
 
-      const newDate = date ? new Date(date) : batch.date;
-      const expiry = new Date(newDate);
-      expiry.setDate(expiry.getDate() + product.shelfLifeDays);
-      batch.expiryDate = expiry;
+      if (item.shelfLifeDays > 0) {
+        const newDate = date ? new Date(date) : batch.date;
+        const expiry = new Date(newDate);
+        expiry.setDate(expiry.getDate() + item.shelfLifeDays);
+        batch.expiryDate = expiry;
+      }
     }
 
     if (date) batch.date = date;
     if (quantity) batch.quantity = quantity;
     if (unitCost) batch.unitCost = unitCost;
-    if (quantity || unitCost) batch.totalCost = batch.quantity * batch.unitCost;
+
+    // Recalculate total cost
+    if (quantity || unitCost) {
+      batch.totalCost = batch.quantity * batch.unitCost;
+    }
+
     if (status) batch.status = status;
     if (notes) batch.notes = notes;
 
     await batch.save();
 
     const result = await ProductionBatch.findById(batch._id)
-      .populate("product", "name");
+      .populate("item", "name category unit");
 
     res.json(result);
   } catch (error) {
@@ -116,7 +150,7 @@ exports.updateProductionBatch = async (req, res, next) => {
   }
 };
 
-/* 4️⃣ Delete Production Batch */
+/* 5. Delete Production Batch */
 exports.deleteProductionBatch = async (req, res, next) => {
   try {
     const batch = await ProductionBatch.findById(req.params.id);

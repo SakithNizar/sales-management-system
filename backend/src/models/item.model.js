@@ -1,0 +1,44 @@
+const mongoose = require("mongoose");
+
+const itemSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    unique: true
+  },
+
+  category: {
+    type: String,
+    enum: ["Raw Material", "Finished Good"],
+    required: true
+  },
+
+  unit: {
+    type: String,
+    required: true
+  },
+
+  shelfLifeDays: {
+    type: Number,
+    default: 0
+  },
+
+  hasBatch: {
+    type: Boolean,
+    default: false
+  },
+
+  minimumLevel: {
+    type: Number,
+    default: 0
+  },
+
+  status: {
+    type: String,
+    enum: ["Active", "Inactive"],
+    default: "Active"
+  }
+
+}, { timestamps: true });
+
+module.exports = mongoose.model("Item", itemSchema);

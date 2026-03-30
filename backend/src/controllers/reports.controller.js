@@ -1,5 +1,5 @@
 const ProductionBatch = require("../models/productionBatch.model");
-const ProductionProduct = require("../models/productionProduct.model");
+const Item = require("../models/item.model");
 const mongoose = require("mongoose");
 
 /* ----------------- 1️⃣ Daily Production Report ----------------- */
@@ -17,11 +17,11 @@ exports.getDailyReport = async (req, res, next) => {
       { $sort: { "_id": -1 } },
     ]);
 
-    // Populate product name for each batch
+    // Populate item name for each batch
     for (let day of dailyReport) {
       day.batches = await ProductionBatch.populate(day.batches, {
-        path: "product",
-        select: "name",
+        path: "item",
+        select: "name category",
       });
     }
 
@@ -55,13 +55,14 @@ exports.getMonthlyReport = async (req, res, next) => {
 exports.getBatchReport = async (req, res, next) => {
   try {
     const batches = await ProductionBatch.find()
-      .populate("product", "name")
+      .populate("item", "name category")
       .sort({ createdAt: -1 });
 
     const result = batches.map(batch => ({
       batchNo: batch.batchNo,
       invoiceNo: batch.invoiceNo,
-      productName: batch.product.name,
+      itemName: batch.item.name,
+      category: batch.item.category,
       quantity: batch.quantity,
       unitCost: batch.unitCost,
       totalCost: batch.totalCost,
@@ -81,7 +82,7 @@ exports.getCostAnalysis = async (req, res, next) => {
     const costAnalysis = await ProductionBatch.aggregate([
       {
         $group: {
-          _id: "$product",
+          _id: "$item",
           totalQuantity: { $sum: "$quantity" },
           totalCost: { $sum: "$totalCost" },
         },
@@ -89,14 +90,14 @@ exports.getCostAnalysis = async (req, res, next) => {
       { $sort: { totalCost: -1 } },
     ]);
 
-    // Populate product name
-    const result = await ProductionProduct.populate(costAnalysis, {
+    // Populate item name
+    const result = await Item.populate(costAnalysis, {
       path: "_id",
       select: "name",
     });
 
     const formatted = result.map(item => ({
-      productName: item._id.name,
+      itemName: item._id.name,
       totalQuantity: item.totalQuantity,
       totalCost: item.totalCost,
     }));
@@ -117,12 +118,13 @@ exports.getExpiryReport = async (req, res, next) => {
     const expiringBatches = await ProductionBatch.find({
       expiryDate: { $lte: expiryLimit, $gte: today },
     })
-      .populate("product", "name")
+      .populate("item", "name category")
       .sort({ expiryDate: 1 });
 
     const result = expiringBatches.map(batch => ({
       batchNo: batch.batchNo,
-      productName: batch.product.name,
+      itemName: batch.item.name,
+      category: batch.item.category,
       expiryDate: batch.expiryDate,
       quantity: batch.quantity,
       daysLeft: Math.ceil((batch.expiryDate - today) / (1000 * 60 * 60 * 24)),
@@ -139,7 +141,6 @@ exports.getDashboardSummary = async (req, res, next) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-
     const tomorrow = new Date(today);
     tomorrow.setDate(today.getDate() + 1);
 

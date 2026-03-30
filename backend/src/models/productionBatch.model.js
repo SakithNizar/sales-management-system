@@ -14,9 +14,9 @@ const productionBatchSchema = new mongoose.Schema(
     trim: true
   },
 
-  product: {
+  item: {
     type: mongoose.Schema.Types.ObjectId,
-    ref: "ProductionProduct",
+    ref: "Item",   // <-- Changed
     required: true
   },
 
@@ -44,8 +44,7 @@ const productionBatchSchema = new mongoose.Schema(
   },
 
   expiryDate: {
-    type: Date,
-    required: true
+    type: Date
   },
 
   status: {
@@ -62,18 +61,13 @@ const productionBatchSchema = new mongoose.Schema(
 { timestamps: true }
 );
 
-/*
-AUTO CALCULATE TOTAL COST
-quantity × unitCost
-*/
+// Auto calculate total cost
 productionBatchSchema.pre("save", function () {
   this.totalCost = this.quantity * this.unitCost;
 });
 
-/*
-INDEXES FOR FASTER QUERIES
-*/
-productionBatchSchema.index({ product: 1 });
+// Index
+productionBatchSchema.index({ item: 1 });
 productionBatchSchema.index({ batchNo: 1 });
 productionBatchSchema.index({ expiryDate: 1 });
 

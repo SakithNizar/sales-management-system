@@ -17,8 +17,24 @@ app.get("/", (req, res) => {
 // ------------------------
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const expenseRoutes = require("./routes/expenseRoutes");
+
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
+app.use("/api/expenses", expenseRoutes);
+
+
+const productionBatchRoutes = require("./routes/productionBatch.routes");
+app.use("/api/production-batches", productionBatchRoutes);
+
+const reportsRoutes = require("./routes/reports.routes");
+
+// All report routes will now be under /api/reports or /api/dashboard
+app.use("/api/reports", reportsRoutes);
+
+
+const itemRoutes = require("./routes/item.routes"); 
+app.use("/api/items", itemRoutes);
 
 // ------------------------
 // Swagger Documentation

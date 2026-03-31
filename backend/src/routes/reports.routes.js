@@ -14,6 +14,20 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
 
 /**
  * @swagger
+ * /reports/daily:
+ *   get:
+ *     summary: Get daily production report
+ *     tags: [Reports]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Daily production data including batches, total quantity, and total cost
+ */
+router.get("/daily", protect, restrictTo("admin", "production_manager"), getDailyReport);
+
+/**
+ * @swagger
  * /reports/monthly:
  *   get:
  *     summary: Get monthly production report
@@ -22,7 +36,7 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Monthly production data
+ *         description: Monthly production data including total quantity and cost
  */
 router.get("/monthly", protect, restrictTo("admin", "production_manager"), getMonthlyReport);
 
@@ -36,7 +50,7 @@ router.get("/monthly", protect, restrictTo("admin", "production_manager"), getMo
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Batch report data
+ *         description: Batch report data including item name, quantity, cost, and status
  */
 router.get("/batch", protect, restrictTo("admin", "production_manager"), getBatchReport);
 
@@ -44,13 +58,13 @@ router.get("/batch", protect, restrictTo("admin", "production_manager"), getBatc
  * @swagger
  * /reports/cost-analysis:
  *   get:
- *     summary: Get production cost analysis per product
+ *     summary: Get production cost analysis per item
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Cost analysis data
+ *         description: Cost analysis report showing total quantity and cost per item
  */
 router.get("/cost-analysis", protect, restrictTo("admin", "production_manager"), getCostAnalysis);
 
@@ -64,7 +78,7 @@ router.get("/cost-analysis", protect, restrictTo("admin", "production_manager"),
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Expiry report data
+ *         description: List of batches that are expiring within the next 7 days
  */
 router.get("/expiry", protect, restrictTo("admin", "production_manager"), getExpiryReport);
 
@@ -72,13 +86,13 @@ router.get("/expiry", protect, restrictTo("admin", "production_manager"), getExp
  * @swagger
  * /reports/dashboard-summary:
  *   get:
- *     summary: Get dashboard summary
+ *     summary: Get dashboard summary for production
  *     tags: [Reports]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Dashboard summary data
+ *         description: Dashboard summary including today's production, expiring batches, and monthly summary
  */
 router.get("/dashboard-summary", protect, restrictTo("admin", "production_manager"), getDashboardSummary);
 

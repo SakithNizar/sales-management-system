@@ -1,5 +1,6 @@
 const express = require("express");
 const router = express.Router();
+
 const {
   addProductionBatch,
   getProductionBatches,
@@ -13,7 +14,7 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  * @swagger
  * tags:
  *   name: Production Batches
- *   description: Manage production batches
+ *   description: Manage production batches (Finished Goods Production)
  */
 
 /**
@@ -32,7 +33,7 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *             type: object
  *             required:
  *               - date
- *               - productId
+ *               - itemId
  *               - quantity
  *               - unitCost
  *             properties:
@@ -40,24 +41,32 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *                 type: string
  *                 format: date
  *                 example: 2026-02-15
- *               productId:
+ *               itemId:
  *                 type: string
- *                 description: Product ID from Production Products
+ *                 description: Item ID (Finished Good)
  *               quantity:
  *                 type: number
+ *                 example: 500
  *               unitCost:
  *                 type: number
+ *                 example: 120
  *               notes:
  *                 type: string
+ *                 example: Morning production batch
  *     responses:
  *       201:
  *         description: Batch created successfully
+ *       400:
+ *         description: Validation error
  *       401:
  *         description: Not authorized
- *       403:
- *         description: Access denied
  */
-router.post("/", protect, restrictTo("admin", "production_manager"), addProductionBatch);
+router.post(
+  "/",
+  protect,
+  restrictTo("admin", "production_manager"),
+  addProductionBatch
+);
 
 /**
  * @swagger
@@ -71,7 +80,12 @@ router.post("/", protect, restrictTo("admin", "production_manager"), addProducti
  *       200:
  *         description: List of production batches
  */
-router.get("/", protect, restrictTo("admin", "production_manager"), getProductionBatches);
+router.get(
+  "/",
+  protect,
+  restrictTo("admin", "production_manager"),
+  getProductionBatches
+);
 
 /**
  * @swagger
@@ -85,6 +99,7 @@ router.get("/", protect, restrictTo("admin", "production_manager"), getProductio
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Batch ID
  *         schema:
  *           type: string
  *     requestBody:
@@ -97,7 +112,7 @@ router.get("/", protect, restrictTo("admin", "production_manager"), getProductio
  *               date:
  *                 type: string
  *                 format: date
- *               productId:
+ *               itemId:
  *                 type: string
  *               quantity:
  *                 type: number
@@ -111,8 +126,15 @@ router.get("/", protect, restrictTo("admin", "production_manager"), getProductio
  *     responses:
  *       200:
  *         description: Batch updated successfully
+ *       404:
+ *         description: Batch not found
  */
-router.put("/:id", protect, restrictTo("admin", "production_manager"), updateProductionBatch);
+router.put(
+  "/:id",
+  protect,
+  restrictTo("admin", "production_manager"),
+  updateProductionBatch
+);
 
 /**
  * @swagger
@@ -126,12 +148,20 @@ router.put("/:id", protect, restrictTo("admin", "production_manager"), updatePro
  *       - in: path
  *         name: id
  *         required: true
+ *         description: Batch ID
  *         schema:
  *           type: string
  *     responses:
  *       200:
  *         description: Batch deleted successfully
+ *       404:
+ *         description: Batch not found
  */
-router.delete("/:id", protect, restrictTo("admin", "production_manager"), deleteProductionBatch);
+router.delete(
+  "/:id",
+  protect,
+  restrictTo("admin", "production_manager"),
+  deleteProductionBatch
+);
 
 module.exports = router;

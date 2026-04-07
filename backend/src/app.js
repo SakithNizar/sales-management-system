@@ -34,6 +34,20 @@ const itemRoutes = require("./routes/item.routes");
 app.use("/api/items", itemRoutes);
 
 // ------------------------
+// Stock IN Routes
+// ------------------------
+const stockInRoutes = require("./routes/stockIn.routes");
+app.use("/api/stock-in", stockInRoutes);
+
+const stockOutRoutes = require("./routes/stockOut.routes");
+
+// Use the route
+app.use("/api/stock-out", stockOutRoutes);
+
+
+const dashboardRoutes = require("./routes/dashboard.routes");
+app.use("/api/dashboard", dashboardRoutes);
+// ------------------------
 // Swagger Documentation
 // ------------------------
 const { swaggerUi, specs } = require("./swagger"); 

@@ -50,6 +50,18 @@ app.use("/api/stock-out", stockOutRoutes);
 
 const dashboardRoutes = require("./routes/dashboard.routes");
 app.use("/api/dashboard", dashboardRoutes);
+
+const routeRoutes = require("./routes/route.routes");
+app.use("/api/routes", routeRoutes);
+
+const customerRoutes = require("./routes/customer.routes");
+app.use("/api/customers", customerRoutes);
+
+const salesRoutes = require("./routes/sales.routes");
+app.use("/api/sales", salesRoutes);
+
+const paymentRoutes = require("./routes/payment.routes");
+app.use("/api/payments", paymentRoutes);
 // ------------------------
 // Swagger Documentation
 // ------------------------

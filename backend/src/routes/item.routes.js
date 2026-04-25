@@ -7,7 +7,8 @@ const {
   getItem,
   updateItem,
   deleteItem,
-  getFinishedGoods
+  getFinishedGoods,
+  getFinishedGoodsForBilling
 } = require("../controllers/item.controller");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -19,6 +20,9 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *   description: Item Management API
  */
 
+// =====================
+// CREATE ITEM
+// =====================
 /**
  * @swagger
  * /items:
@@ -44,10 +48,12 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *               category:
  *                 type: string
  *                 enum: [Raw Material, Finished Good]
- *                 example: Finished Good
  *               unit:
  *                 type: string
  *                 example: Bottle
+ *               sellingPrice:
+ *                 type: number
+ *                 example: 120
  *               shelfLifeDays:
  *                 type: number
  *                 example: 7
@@ -60,6 +66,9 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  */
 router.post("/", protect, restrictTo("admin", "store_manager"), createItem);
 
+// =====================
+// GET ALL ITEMS
+// =====================
 /**
  * @swagger
  * /items:
@@ -72,27 +81,60 @@ router.post("/", protect, restrictTo("admin", "store_manager"), createItem);
  *       200:
  *         description: List of all items
  */
-router.get("/", protect, restrictTo("admin", "store_manager", "production_manager"), getItems);
+router.get(
+  "/",
+  protect,
+  restrictTo("admin", "store_manager", "production_manager"),
+  getItems
+);
 
+// =====================
+// GET FINISHED GOODS (PRODUCTION / STOCK)
+// =====================
 /**
  * @swagger
  * /items/finished-goods:
  *   get:
- *     summary: Get all finished goods for dropdown
+ *     summary: Get finished goods (no price) for production/stock
  *     tags: [Items]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: List of finished goods items
+ *         description: List of finished goods without selling price
  */
 router.get(
   "/finished-goods",
   protect,
-  restrictTo("admin", "production_manager"),
+  restrictTo("admin", "production_manager", "store_manager"),
   getFinishedGoods
 );
 
+// =====================
+// GET FINISHED GOODS (BILLING)
+// =====================
+/**
+ * @swagger
+ * /items/finished-goods/billing:
+ *   get:
+ *     summary: Get finished goods with selling price for billing
+ *     tags: [Items]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of finished goods with selling price
+ */
+router.get(
+  "/finished-goods/billing",
+  protect,
+  restrictTo("admin", "salesman"),
+  getFinishedGoodsForBilling
+);
+
+// =====================
+// GET SINGLE ITEM
+// =====================
 /**
  * @swagger
  * /items/{id}:
@@ -110,9 +152,19 @@ router.get(
  *     responses:
  *       200:
  *         description: Single item data
+ *       404:
+ *         description: Item not found
  */
-router.get("/:id", protect, restrictTo("admin", "store_manager"), getItem);
+router.get(
+  "/:id",
+  protect,
+  restrictTo("admin", "store_manager"),
+  getItem
+);
 
+// =====================
+// UPDATE ITEM
+// =====================
 /**
  * @swagger
  * /items/{id}:
@@ -141,6 +193,8 @@ router.get("/:id", protect, restrictTo("admin", "store_manager"), getItem);
  *                 enum: [Raw Material, Finished Good]
  *               unit:
  *                 type: string
+ *               sellingPrice:
+ *                 type: number
  *               shelfLifeDays:
  *                 type: number
  *               minimumLevel:
@@ -150,10 +204,20 @@ router.get("/:id", protect, restrictTo("admin", "store_manager"), getItem);
  *                 enum: [Active, Inactive]
  *     responses:
  *       200:
- *         description: Item updated
+ *         description: Item updated successfully
+ *       404:
+ *         description: Item not found
  */
-router.put("/:id", protect, restrictTo("admin", "store_manager"), updateItem);
+router.put(
+  "/:id",
+  protect,
+  restrictTo("admin", "store_manager"),
+  updateItem
+);
 
+// =====================
+// DELETE ITEM
+// =====================
 /**
  * @swagger
  * /items/{id}:
@@ -170,8 +234,15 @@ router.put("/:id", protect, restrictTo("admin", "store_manager"), updateItem);
  *           type: string
  *     responses:
  *       200:
- *         description: Item deleted
+ *         description: Item deleted successfully
+ *       404:
+ *         description: Item not found
  */
-router.delete("/:id", protect, restrictTo("admin"), deleteItem);
+router.delete(
+  "/:id",
+  protect,
+  restrictTo("admin"),
+  deleteItem
+);
 
 module.exports = router;

@@ -2,8 +2,6 @@
 const express = require("express");
 const router = express.Router();
 
-const { login } = require("../controllers/authController");
-const { protect, restrictTo } = require("../middlewares/authMiddleware");
 const { login, logout } = require("../controllers/authController");
 const { protect } = require("../middlewares/authMiddleware"); 
 
@@ -11,18 +9,18 @@ const { protect } = require("../middlewares/authMiddleware");
  * @swagger
  * tags:
  *   name: Auth
- *   description: Authentication and user session management
+ *   description: Authentication routes (login, JWT test)
  */
 
 // =====================
-// PUBLIC ROUTES
+// Public Routes
 // =====================
 
 /**
  * @swagger
  * /auth/login:
  *   post:
- *     summary: Login user and generate JWT token
+ *     summary: Login a user and get JWT token
  *     tags: [Auth]
  *     requestBody:
  *       required: true
@@ -36,64 +34,58 @@ const { protect } = require("../middlewares/authMiddleware");
  *             properties:
  *               username:
  *                 type: string
- *                 example: admin1
+ *                 example: johndoe
  *               password:
  *                 type: string
- *                 example: Admin1234
+ *                 example: Password123!
  *     responses:
  *       200:
- *         description: Login successful
+ *         description: Login successful, returns JWT token
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 token:
+ *                   type: string
+ *                   example: "eyJhbGciOiJIUzI1NiIsInR..."
  *       400:
  *         description: Invalid credentials
  */
 router.post("/login", login);
 
 // =====================
-// PROTECTED ROUTES
+// Protected Routes (for testing JWT auth)
 // =====================
 
 /**
  * @swagger
  * /auth/me:
  *   get:
- *     summary: Get logged-in user profile
+ *     summary: Get current logged-in user info
  *     tags: [Auth]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: User profile retrieved successfully
+ *         description: User info retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: User info retrieved successfully
+ *                 user:
+ *                   type: object
+ *                   example: { "id": "64f123abc", "username": "johndoe", "role": "admin" }
  *       401:
- *         description: Unauthorized
+ *         description: Unauthorized (invalid or missing token)
  */
 router.get("/me", protect, (req, res) => {
   res.status(200).json({
-    message: "User profile retrieved successfully",
-    user: req.user,
-  });
-});
-
-// =====================
-// OPTIONAL: ADMIN TEST ROUTE (for ERP control)
-// =====================
-
-/**
- * @swagger
- * /auth/admin-only:
- *   get:
- *     summary: Test route for admin access only
- *     tags: [Auth]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Admin access granted
- *       403:
- *         description: Forbidden
- */
-router.get("/admin-only", protect, restrictTo("admin"), (req, res) => {
-  res.status(200).json({
-    message: "Admin access granted",
+    message: "User info retrieved successfully",
     user: req.user,
   });
 });

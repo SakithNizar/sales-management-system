@@ -2,10 +2,8 @@
 const express = require("express");
 const router = express.Router();
 
-const { login } = require("../controllers/authController");
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
 const { login, logout } = require("../controllers/authController");
-const { protect } = require("../middlewares/authMiddleware"); 
 
 /**
  * @swagger

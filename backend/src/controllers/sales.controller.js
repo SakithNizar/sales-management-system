@@ -2,6 +2,7 @@ const Sales = require("../models/sales.model");
 const Item = require("../models/item.model");
 const Customer = require("../models/customer.model");
 const User = require("../models/User.model");
+const { addTransaction } = require("../controllers/accountController"); // ✅ ADD THIS LINE
 
 // =====================
 // CREATE SALES INVOICE
@@ -96,10 +97,23 @@ exports.createSale = async (req, res, next) => {
     });
 
     // =====================
-    // UPDATE CUSTOMER BALANCE (IMPORTANT FIX)
+    // UPDATE CUSTOMER BALANCE
     // =====================
     customerDoc.balance += totalAmount;
     await customerDoc.save();
+
+    // ✅ ADD THIS - Record sale income in Accounts
+    await addTransaction({
+      date: sale.invoiceDate,
+      invoiceNo: sale.invoiceId,
+      description: `Product Sales - ${customerDoc.customerName}`,
+      income: sale.totalAmount,
+      expense: 0,
+      sourceModule: "sales",
+      sourceId: sale._id,
+      enteredBy: req.user._id,
+      notes: notes || "Sales income"
+    });
 
     res.status(201).json({
       message: "Sale created successfully",

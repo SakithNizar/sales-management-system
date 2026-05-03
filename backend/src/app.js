@@ -19,11 +19,13 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
 const salaryRoutes = require("./routes/salaryRoutes");
+const accountRoutes = require("./routes/accountRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/salary", salaryRoutes);
+app.use("/api/accounts", accountRoutes);
 
 const productionBatchRoutes = require("./routes/productionBatch.routes");
 app.use("/api/production-batches", productionBatchRoutes);

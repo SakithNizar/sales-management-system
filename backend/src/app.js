@@ -18,11 +18,12 @@ app.get("/", (req, res) => {
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
+const salaryRoutes = require("./routes/salaryRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/expenses", expenseRoutes);
-
+app.use("/api/salary", salaryRoutes);
 
 const productionBatchRoutes = require("./routes/productionBatch.routes");
 app.use("/api/production-batches", productionBatchRoutes);

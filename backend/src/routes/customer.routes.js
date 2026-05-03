@@ -7,7 +7,8 @@ const {
   getCustomer,
   updateCustomer,
   deleteCustomer,
-  getCustomerLedger
+  getCustomerLedger,
+  getSalesmanStats
 } = require("../controllers/customer.controller");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -112,6 +113,67 @@ router.post("/", createCustomer);
  *         description: Unauthorized
  */
 router.get("/", getCustomers);
+
+// =====================
+// GET SALESMAN STATISTICS (DASHBOARD CARDS)
+// =====================
+/**
+ * @swagger
+ * /customers/salesman/stats:
+ *   get:
+ *     summary: "Get salesman dashboard statistics"
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     description: |
+ *       Returns aggregated statistics for the logged-in salesman:
+ *       - Total active customers in assigned routes
+ *       - Total sales amount for current month
+ *       - Total payments collected in current month
+ *       - Total outstanding balance from all customers
+ *     responses:
+ *       200:
+ *         description: "Statistics retrieved successfully"
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     myCustomersCount:
+ *                       type: integer
+ *                       example: 24
+ *                       description: "Number of active customers in salesman's assigned routes"
+ *                     thisMonthSales:
+ *                       type: number
+ *                       example: 185000
+ *                       description: "Total sales amount (LKR) for current month from completed invoices"
+ *                     collectedPayments:
+ *                       type: number
+ *                       example: 92500
+ *                       description: "Total payments collected (LKR) in current month"
+ *                     outstandingBalance:
+ *                       type: number
+ *                       example: 92500
+ *                       description: "Total outstanding balance (LKR) from all customers in assigned routes"
+ *       401:
+ *         description: "Unauthorized - Invalid or missing token"
+ *       403:
+ *         description: "Forbidden - Access denied (requires admin or salesman role)"
+ *       500:
+ *         description: "Internal server error"
+ */
+router.get(
+  "/salesman/stats",
+  protect,
+  restrictTo("admin", "salesman"),
+  getSalesmanStats
+);
 
 // =====================
 // GET SINGLE CUSTOMER

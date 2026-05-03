@@ -1,6 +1,7 @@
 const Salary = require("../models/Salary.model");
 const Advance = require("../models/Advance.model");
 const User = require("../models/User.model");
+const { addTransaction } = require("../controllers/accountController"); // ✅ ADD THIS LINE
 
 // ===============================
 // CREATE SALARY (ADMIN ONLY)
@@ -52,6 +53,19 @@ exports.createSalary = async (req, res) => {
       paymentNo,
       remarks,
       createdBy: req.user._id
+    });
+
+    // ✅ ADD THIS - Record salary payment in Accounts
+    await addTransaction({
+      date: salary.salaryDate,
+      invoiceNo: salary.paymentNo,
+      description: `Salary Payment - ${staff.fullName} - ${month}`,
+      income: 0,
+      expense: salary.salaryPaid,  // ← Only the salary paid portion (not totalPaid)
+      sourceModule: "salary",
+      sourceId: salary._id,
+      enteredBy: req.user._id,
+      notes: remarks || `Monthly salary for ${month} (Advance: ${totalAdvance}, Paid: ${salaryPaid})`
     });
 
     res.status(201).json({

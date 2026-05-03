@@ -1,5 +1,6 @@
 const Advance = require("../models/Advance.model");
 const User = require("../models/User.model");
+const { addTransaction } = require("../controllers/accountController"); // ✅ ADD THIS LINE
 
 // ===============================
 // ADD ADVANCE (ADMIN ONLY)
@@ -24,6 +25,19 @@ exports.createAdvance = async (req, res) => {
       paymentNo,
       notes,
       createdBy: req.user._id
+    });
+
+    // ✅ ADD THIS - Record advance in Accounts
+    await addTransaction({
+      date: advance.date,
+      invoiceNo: advance.paymentNo,
+      description: `Advance Payment - ${staff.fullName}`,
+      income: 0,
+      expense: advance.amount,
+      sourceModule: "advance",
+      sourceId: advance._id,
+      enteredBy: req.user._id,
+      notes: notes || "Salary advance"
     });
 
     res.status(201).json({

@@ -18,11 +18,14 @@ app.get("/", (req, res) => {
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const expenseRoutes = require("./routes/expenseRoutes");
+const salaryRoutes = require("./routes/salaryRoutes");
+const accountRoutes = require("./routes/accountRoutes");
 
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/expenses", expenseRoutes);
-
+app.use("/api/salary", salaryRoutes);
+app.use("/api/accounts", accountRoutes);
 
 const productionBatchRoutes = require("./routes/productionBatch.routes");
 app.use("/api/production-batches", productionBatchRoutes);
@@ -50,6 +53,18 @@ app.use("/api/stock-out", stockOutRoutes);
 
 const dashboardRoutes = require("./routes/dashboard.routes");
 app.use("/api/dashboard", dashboardRoutes);
+
+const routeRoutes = require("./routes/route.routes");
+app.use("/api/routes", routeRoutes);
+
+const customerRoutes = require("./routes/customer.routes");
+app.use("/api/customers", customerRoutes);
+
+const salesRoutes = require("./routes/sales.routes");
+app.use("/api/sales", salesRoutes);
+
+const paymentRoutes = require("./routes/payment.routes");
+app.use("/api/payments", paymentRoutes);
 // ------------------------
 // Swagger Documentation
 // ------------------------

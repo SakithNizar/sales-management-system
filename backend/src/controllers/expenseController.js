@@ -1,5 +1,6 @@
 const { Expense, DEFAULT_CATEGORIES, PAYMENT_METHODS } = require("../models/Expense.model");
 const User = require("../models/User.model");
+const { addTransaction } = require("../controllers/accountController"); 
 
 // =====================
 // ADD NEW EXPENSE
@@ -22,13 +23,26 @@ exports.addExpense = async (req, res, next) => {
     }
 
     const expense = await Expense.create({
-     date: date || new Date(),
+      date: date || new Date(),
       category,
       subject,
       invoiceNo,
       amount,
       paymentMethod,
-      enteredBy: req.user.id, // auto from logged-in admin
+      enteredBy: req.user.id,
+    });
+
+    //Record expense in Accounts
+    await addTransaction({
+      date: expense.date,
+      invoiceNo: expense.invoiceNo,
+      description: `${expense.category} - ${expense.subject}`,
+      income: 0,
+      expense: expense.amount,
+      sourceModule: "expense",
+      sourceId: expense._id,
+      enteredBy: req.user.id,
+      notes: `Expense for ${expense.subject}`
     });
 
     res.status(201).json({

@@ -10,6 +10,7 @@ const {
   deleteUser,
   activateUser,
   deactivateUser,
+  assignRoutesToSalesman
 } = require("../controllers/userController");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -21,14 +22,19 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *   description: User management APIs
  */
 
-// All routes are protected and admin-only
+// =====================
+// GLOBAL AUTH MIDDLEWARE
+// =====================
 router.use(protect, restrictTo("admin"));
 
+// =====================
+// CREATE USER
+// =====================
 /**
  * @swagger
  * /users:
  *   post:
- *     summary: Create a new user
+ *     summary: Create a new user (admin only)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -61,15 +67,18 @@ router.use(protect, restrictTo("admin"));
  *                 example: john@example.com
  *               role:
  *                 type: string
- *                 example: admin
+ *                 example: salesman
  *     responses:
  *       201:
  *         description: User created successfully
  *       400:
- *         description: Validation error / duplicate
+ *         description: Validation or duplicate error
  */
 router.post("/", createUser);
 
+// =====================
+// GET ALL USERS
+// =====================
 /**
  * @swagger
  * /users:
@@ -83,20 +92,21 @@ router.post("/", createUser);
  *         name: role
  *         schema:
  *           type: string
- *         description: Optional role filter (e.g., salesman)
+ *         description: Filter users by role (admin, salesman, etc.)
  *     responses:
  *       200:
  *         description: List of users
- *       401:
- *         description: Unauthorized
  */
 router.get("/", getAllUsers);
 
+// =====================
+// GET USER BY USERNAME
+// =====================
 /**
  * @swagger
  * /users/{username}:
  *   get:
- *     summary: Get a single user by username
+ *     summary: Get user by username
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -106,7 +116,6 @@ router.get("/", getAllUsers);
  *         required: true
  *         schema:
  *           type: string
- *         description: Username of the user
  *     responses:
  *       200:
  *         description: User data
@@ -115,11 +124,14 @@ router.get("/", getAllUsers);
  */
 router.get("/:username", getUserByUsername);
 
+// =====================
+// UPDATE USER (NO ROUTE LOGIC)
+// =====================
 /**
  * @swagger
  * /users/{username}:
  *   put:
- *     summary: Update a user by username
+ *     summary: Update user details (NO route assignment here)
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
@@ -129,7 +141,6 @@ router.get("/:username", getUserByUsername);
  *         required: true
  *         schema:
  *           type: string
- *         description: Username of the user to update
  *     requestBody:
  *       required: true
  *       content:
@@ -156,78 +167,92 @@ router.get("/:username", getUserByUsername);
  *       200:
  *         description: User updated successfully
  *       400:
- *         description: Validation error / duplicate
+ *         description: Validation or duplicate error
  *       404:
  *         description: User not found
  */
 router.put("/:username", updateUser);
 
+// =====================
+// ASSIGN ROUTES TO SALESMAN
+// =====================
+/**
+ * @swagger
+ * /users/{userId}/assign-routes:
+ *   post:
+ *     summary: Assign routes to salesman
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - routeIds
+ *             properties:
+ *               routeIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 example: ["661abc123", "661abc456"]
+ *     responses:
+ *       200:
+ *         description: Routes assigned successfully
+ *       400:
+ *         description: Invalid routes
+ *       404:
+ *         description: Salesman not found
+ */
+router.post("/:userId/assign-routes", assignRoutesToSalesman);
+
+// =====================
+// ACTIVATE USER
+// =====================
 /**
  * @swagger
  * /users/{username}/activate:
  *   put:
- *     summary: Activate a user by username
+ *     summary: Activate user
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *         description: Username of the user to activate
- *     responses:
- *       200:
- *         description: User activated successfully
- *       404:
- *         description: User not found
  */
 router.put("/:username/activate", activateUser);
 
+// =====================
+// DEACTIVATE USER
+// =====================
 /**
  * @swagger
  * /users/{username}/deactivate:
  *   put:
- *     summary: Deactivate a user by username
+ *     summary: Deactivate user
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *         description: Username of the user to deactivate
- *     responses:
- *       200:
- *         description: User deactivated successfully
- *       404:
- *         description: User not found
  */
 router.put("/:username/deactivate", deactivateUser);
 
+// =====================
+// DELETE USER
+// =====================
 /**
  * @swagger
  * /users/{username}:
  *   delete:
- *     summary: Delete a user by username
+ *     summary: Delete user
  *     tags: [Users]
  *     security:
  *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *         description: Username of the user to delete
- *     responses:
- *       200:
- *         description: User deleted successfully
- *       404:
- *         description: User not found
  */
 router.delete("/:username", deleteUser);
 

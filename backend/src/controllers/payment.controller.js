@@ -2,6 +2,7 @@ const Payment = require("../models/payment.model");
 const Sales = require("../models/sales.model");
 const Customer = require("../models/customer.model");
 const User = require("../models/User.model");
+const { addTransaction } = require("../controllers/accountController"); // ✅ ADD THIS LINE
 
 // =====================
 // CREATE PAYMENT
@@ -79,6 +80,19 @@ exports.createPayment = async (req, res, next) => {
       amount,
       paymentMethod,
       notes
+    });
+
+    // ✅ ADD THIS - Record payment in Accounts (Cash Income)
+    await addTransaction({
+      date: new Date(),
+      invoiceNo: receiptId,
+      description: `Payment Received - ${customerDoc.customerName} - Invoice ${sale.invoiceId}`,
+      income: amount,
+      expense: 0,
+      sourceModule: "payment",
+      sourceId: payment._id,
+      enteredBy: req.user._id,
+      notes: notes || `Payment for invoice ${sale.invoiceId}`
     });
 
     res.status(201).json({
@@ -192,6 +206,10 @@ exports.deletePayment = async (req, res, next) => {
     if (!payment) {
       return res.status(404).json({ message: "Payment not found" });
     }
+
+    // First, delete the account transaction if exists
+    const Account = require("../models/Account.model");
+    await Account.deleteOne({ sourceModule: "payment", sourceId: payment._id });
 
     // Reverse effects
     const sale = await Sales.findById(payment.invoice);

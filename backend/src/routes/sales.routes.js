@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   createSale,
   getSales,
+  getSalesPopupList,
   getSale
 } = require("../controllers/sales.controller");
 
@@ -105,6 +106,55 @@ router.get(
   "/",
   restrictTo("admin", "salesman"),
   getSales
+);
+
+/**
+ * @swagger
+ * /sales/popup/list:
+ *   get:
+ *     summary: Get sales invoice popup list
+ *     tags: [Sales]
+ *     security:
+ *       - bearerAuth: []
+ *     description: |
+ *       Returns lightweight sales invoice list for dropdowns/popups.
+ *       
+ *       - Admin → Can see all invoices
+ *       - Salesman → Can only see own invoices
+ *     responses:
+ *       200:
+ *         description: Sales popup list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     example: "681234abcd"
+ *                   invoiceId:
+ *                     type: string
+ *                     example: "INV-001"
+ *                   invoiceDate:
+ *                     type: string
+ *                     format: date-time
+ *                   totalAmount:
+ *                     type: number
+ *                     example: 15000
+ *                   displayName:
+ *                     type: string
+ *                     example: "INV-001"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ */
+router.get(
+  "/popup/list",
+  restrictTo("admin", "salesman"),
+  getSalesPopupList
 );
 
 /* =========================================================

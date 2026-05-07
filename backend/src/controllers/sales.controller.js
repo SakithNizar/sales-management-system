@@ -2,6 +2,7 @@ const Sales = require("../models/sales.model");
 const Item = require("../models/item.model");
 const Customer = require("../models/customer.model");
 const User = require("../models/User.model");
+const { addTransaction } = require("../controllers/accountController"); // ✅ ADD THIS LINE
 
 // =====================
 // CREATE SALES INVOICE
@@ -96,10 +97,23 @@ exports.createSale = async (req, res, next) => {
     });
 
     // =====================
-    // UPDATE CUSTOMER BALANCE (IMPORTANT FIX)
+    // UPDATE CUSTOMER BALANCE
     // =====================
     customerDoc.balance += totalAmount;
     await customerDoc.save();
+
+    // ✅ ADD THIS - Record sale income in Accounts
+    await addTransaction({
+      date: sale.invoiceDate,
+      invoiceNo: sale.invoiceId,
+      description: `Product Sales - ${customerDoc.customerName}`,
+      income: sale.totalAmount,
+      expense: 0,
+      sourceModule: "sales",
+      sourceId: sale._id,
+      enteredBy: req.user._id,
+      notes: notes || "Sales income"
+    });
 
     res.status(201).json({
       message: "Sale created successfully",
@@ -129,6 +143,48 @@ exports.getSales = async (req, res, next) => {
       .sort({ createdAt: -1 });
 
     res.json(sales);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// =====================
+// SALES INVOICE POPUP LIST
+// =====================
+exports.getSalesPopupList = async (req, res, next) => {
+  try {
+
+    let filter = {};
+
+    // =====================
+    // SALESMAN → ONLY OWN SALES
+    // =====================
+    if (req.user.role === "salesman") {
+      filter.salesman = req.user._id;
+    }
+
+    // =====================
+    // GET SALES
+    // =====================
+    const sales = await Sales.find(filter)
+      .select("_id invoiceId invoiceDate totalAmount")
+      .sort({ createdAt: -1 });
+
+    // =====================
+    // FORMAT FOR DROPDOWN
+    // =====================
+    const formattedSales = sales.map((sale) => ({
+      _id: sale._id,
+      invoiceId: sale.invoiceId,
+      invoiceDate: sale.invoiceDate,
+      totalAmount: sale.totalAmount,
+
+      // frontend display
+      displayName: sale.invoiceId
+    }));
+
+    res.status(200).json(formattedSales);
 
   } catch (err) {
     next(err);

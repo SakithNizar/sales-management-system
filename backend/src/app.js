@@ -65,6 +65,12 @@ app.use("/api/sales", salesRoutes);
 
 const paymentRoutes = require("./routes/payment.routes");
 app.use("/api/payments", paymentRoutes);
+
+// Add this with your other route registrations
+const adminDashboardRoutes = require("./routes/adminDashboard.routes");
+
+// Use the route
+app.use("/api/admin-dashboard", adminDashboardRoutes);
 // ------------------------
 // Swagger Documentation
 // ------------------------

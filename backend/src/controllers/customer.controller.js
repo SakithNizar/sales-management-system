@@ -112,6 +112,69 @@ exports.getCustomers = async (req, res, next) => {
 };
 
 // =====================
+// CUSTOMER POPUP LIST
+// =====================
+exports.getCustomerPopupList = async (req, res, next) => {
+  try {
+
+    let filter = {
+      status: "active"
+    };
+
+    // =====================
+    // ADMIN → ALL CUSTOMERS
+    // =====================
+    if (req.user.role === "admin") {
+
+      // optional route filter
+      if (req.query.route) {
+        filter.route = req.query.route;
+      }
+
+    }
+
+    // =====================
+    // SALESMAN → ONLY ASSIGNED ROUTES
+    // =====================
+    if (req.user.role === "salesman") {
+
+      const user = await User.findById(req.user._id);
+
+      filter.route = {
+        $in: user.assignedRoutes
+      };
+
+    }
+
+    // =====================
+    // GET CUSTOMER LIST
+    // =====================
+    const customers = await Customer.find(filter)
+      .select("_id customerId customerName shopName")
+      .sort({ customerName: 1 });
+
+    // =====================
+    // FORMAT FOR DROPDOWN
+    // =====================
+    const formattedCustomers = customers.map((customer) => ({
+      _id: customer._id,
+      customerId: customer.customerId,
+      customerName: customer.customerName,
+      shopName: customer.shopName,
+
+      // display in frontend
+      displayName: `${customer.customerName} - ${customer.shopName}`
+    }));
+
+    res.status(200).json(formattedCustomers);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+// =====================
 // GET SINGLE CUSTOMER
 // =====================
 exports.getCustomer = async (req, res, next) => {
@@ -342,6 +405,75 @@ exports.getCustomerLedger = async (req, res, next) => {
       currentBalance: balance
     });
 
+  } catch (err) {
+    next(err);
+  }
+};
+
+//get status
+
+// Add to customer.controller.js
+exports.getSalesmanStats = async (req, res, next) => {
+  try {
+    const salesmanId = req.user._id;
+    
+    // Get assigned routes for this salesman
+    const user = await User.findById(salesmanId);
+    const assignedRouteIds = user.assignedRoutes;
+    
+    // 1. MY CUSTOMERS COUNT
+    const myCustomersCount = await Customer.countDocuments({
+      route: { $in: assignedRouteIds },
+      status: "active"
+    });
+    
+    // 2. THIS MONTH SALES (Total amount from invoices)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+    
+    const endOfMonth = new Date();
+    endOfMonth.setMonth(endOfMonth.getMonth() + 1);
+    endOfMonth.setDate(0);
+    endOfMonth.setHours(23, 59, 59, 999);
+    
+    const monthlySales = await Sales.aggregate([
+      {
+        $match: {
+          salesman: salesmanId,
+          invoiceDate: { $gte: startOfMonth, $lte: endOfMonth },
+          status: "Completed"
+        }
+      },
+      { $group: { _id: null, total: { $sum: "$totalAmount" } } }
+    ]);
+    
+    // 3. COLLECTED PAYMENTS (This month)
+    const monthlyPayments = await Payment.aggregate([
+      {
+        $match: {
+          salesman: salesmanId,
+          createdAt: { $gte: startOfMonth, $lte: endOfMonth }
+        }
+      },
+      { $group: { _id: null, total: { $sum: "$amount" } } }
+    ]);
+    
+    // 4. OUTSTANDING BALANCE (Total due from all customers in my routes)
+    const customers = await Customer.find({
+      route: { $in: assignedRouteIds },
+      status: "active"
+    });
+    
+    const outstandingBalance = customers.reduce((sum, cust) => sum + (cust.balance || 0), 0);
+    
+    res.status(200).json({
+      myCustomersCount,
+      thisMonthSales: monthlySales[0]?.total || 0,
+      collectedPayments: monthlyPayments[0]?.total || 0,
+      outstandingBalance
+    });
+    
   } catch (err) {
     next(err);
   }

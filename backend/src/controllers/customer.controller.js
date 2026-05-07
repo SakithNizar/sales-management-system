@@ -112,6 +112,69 @@ exports.getCustomers = async (req, res, next) => {
 };
 
 // =====================
+// CUSTOMER POPUP LIST
+// =====================
+exports.getCustomerPopupList = async (req, res, next) => {
+  try {
+
+    let filter = {
+      status: "active"
+    };
+
+    // =====================
+    // ADMIN → ALL CUSTOMERS
+    // =====================
+    if (req.user.role === "admin") {
+
+      // optional route filter
+      if (req.query.route) {
+        filter.route = req.query.route;
+      }
+
+    }
+
+    // =====================
+    // SALESMAN → ONLY ASSIGNED ROUTES
+    // =====================
+    if (req.user.role === "salesman") {
+
+      const user = await User.findById(req.user._id);
+
+      filter.route = {
+        $in: user.assignedRoutes
+      };
+
+    }
+
+    // =====================
+    // GET CUSTOMER LIST
+    // =====================
+    const customers = await Customer.find(filter)
+      .select("_id customerId customerName shopName")
+      .sort({ customerName: 1 });
+
+    // =====================
+    // FORMAT FOR DROPDOWN
+    // =====================
+    const formattedCustomers = customers.map((customer) => ({
+      _id: customer._id,
+      customerId: customer.customerId,
+      customerName: customer.customerName,
+      shopName: customer.shopName,
+
+      // display in frontend
+      displayName: `${customer.customerName} - ${customer.shopName}`
+    }));
+
+    res.status(200).json(formattedCustomers);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+
+// =====================
 // GET SINGLE CUSTOMER
 // =====================
 exports.getCustomer = async (req, res, next) => {

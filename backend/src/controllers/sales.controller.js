@@ -150,6 +150,48 @@ exports.getSales = async (req, res, next) => {
 };
 
 // =====================
+// SALES INVOICE POPUP LIST
+// =====================
+exports.getSalesPopupList = async (req, res, next) => {
+  try {
+
+    let filter = {};
+
+    // =====================
+    // SALESMAN → ONLY OWN SALES
+    // =====================
+    if (req.user.role === "salesman") {
+      filter.salesman = req.user._id;
+    }
+
+    // =====================
+    // GET SALES
+    // =====================
+    const sales = await Sales.find(filter)
+      .select("_id invoiceId invoiceDate totalAmount")
+      .sort({ createdAt: -1 });
+
+    // =====================
+    // FORMAT FOR DROPDOWN
+    // =====================
+    const formattedSales = sales.map((sale) => ({
+      _id: sale._id,
+      invoiceId: sale.invoiceId,
+      invoiceDate: sale.invoiceDate,
+      totalAmount: sale.totalAmount,
+
+      // frontend display
+      displayName: sale.invoiceId
+    }));
+
+    res.status(200).json(formattedSales);
+
+  } catch (err) {
+    next(err);
+  }
+};
+
+// =====================
 // GET SINGLE SALE
 // =====================
 exports.getSale = async (req, res, next) => {

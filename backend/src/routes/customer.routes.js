@@ -4,6 +4,7 @@ const router = express.Router();
 const {
   createCustomer,
   getCustomers,
+  getCustomerPopupList,
   getCustomer,
   updateCustomer,
   deleteCustomer,
@@ -173,6 +174,69 @@ router.get(
   protect,
   restrictTo("admin", "salesman"),
   getSalesmanStats
+);
+
+/**
+ * @swagger
+ * /customers/popup/list:
+ *   get:
+ *     summary: "Get customer popup/dropdown list"
+ *     tags: [Customers]
+ *     security:
+ *       - bearerAuth: []
+ *     description: |
+ *       Returns a lightweight customer list for dropdowns/popups.
+ *       
+ *       - Admin → Can see all customers
+ *       - Salesman → Can only see customers in assigned routes
+ *       
+ *       Used in:
+ *       - Sales module
+ *       - Payment module
+ *       - Return module
+ *       - Mobile sales apps
+ *     parameters:
+ *       - in: query
+ *         name: route
+ *         schema:
+ *           type: string
+ *         required: false
+ *         description: Filter customers by route (Admin only)
+ *     responses:
+ *       200:
+ *         description: Customer popup list retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     example: "681234abcd"
+ *                   customerId:
+ *                     type: string
+ *                     example: "CUS-001"
+ *                   customerName:
+ *                     type: string
+ *                     example: "Nimal Perera"
+ *                   shopName:
+ *                     type: string
+ *                     example: "Nimal Stores"
+ *                   displayName:
+ *                     type: string
+ *                     example: "Nimal Perera - Nimal Stores"
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Access denied
+ */
+router.get(
+  "/popup/list",
+  protect,
+  restrictTo("admin", "salesman"),
+  getCustomerPopupList
 );
 
 // =====================

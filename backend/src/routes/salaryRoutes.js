@@ -17,7 +17,7 @@ const {
   getAdvancesByStaff
 } = require("../controllers/advanceController");
 
-const { protect, restrictTo } = require("../middleware/authMiddleware");
+const { protect, restrictTo } = require("../middlewares/authMiddleware");
 
 // ===============================
 // SALARY ROUTES (ADMIN ONLY)

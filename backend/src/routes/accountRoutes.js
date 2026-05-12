@@ -8,7 +8,7 @@ const {
   getMonthlyReport
 } = require("../controllers/accountController");
 
-const { protect, restrictTo } = require("../middleware/authMiddleware");
+const { protect, restrictTo } = require("../middlewares/authMiddleware");
 
 // All account routes require authentication and admin role
 router.use(protect, restrictTo("admin"));

@@ -6,6 +6,7 @@ const {
   createUser,
   getAllUsers,
   getUserByUsername,
+  getCurrentUserProfile,
   updateUser,
   deleteUser,
   activateUser,
@@ -23,13 +24,52 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  */
 
 // =====================
-// GLOBAL AUTH MIDDLEWARE
+// PUBLIC (within auth) ROUTES - No strict role restriction
+// =====================
+
+/**
+ * @swagger
+ * /users/me/profile:
+ *   get:
+ *     summary: Get current logged-in user's profile
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile data
+ */
+router.get("/me/profile", protect, getCurrentUserProfile);
+
+/**
+ * @swagger
+ * /users/{username}:
+ *   get:
+ *     summary: Get user by username (admins only, or own profile)
+ *     tags: [Users]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: username
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: User data
+ *       403:
+ *         description: Access denied
+ *       404:
+ *         description: User not found
+ */
+router.get("/:username", protect, getUserByUsername);
+
+// =====================
+// ADMIN ONLY ROUTES
 // =====================
 router.use(protect, restrictTo("admin"));
 
-// =====================
-// CREATE USER
-// =====================
 /**
  * @swagger
  * /users:
@@ -76,9 +116,6 @@ router.use(protect, restrictTo("admin"));
  */
 router.post("/", createUser);
 
-// =====================
-// GET ALL USERS
-// =====================
 /**
  * @swagger
  * /users:
@@ -99,34 +136,6 @@ router.post("/", createUser);
  */
 router.get("/", getAllUsers);
 
-// =====================
-// GET USER BY USERNAME
-// =====================
-/**
- * @swagger
- * /users/{username}:
- *   get:
- *     summary: Get user by username
- *     tags: [Users]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: User data
- *       404:
- *         description: User not found
- */
-router.get("/:username", getUserByUsername);
-
-// =====================
-// UPDATE USER (NO ROUTE LOGIC)
-// =====================
 /**
  * @swagger
  * /users/{username}:
@@ -173,9 +182,6 @@ router.get("/:username", getUserByUsername);
  */
 router.put("/:username", updateUser);
 
-// =====================
-// ASSIGN ROUTES TO SALESMAN
-// =====================
 /**
  * @swagger
  * /users/{userId}/assign-routes:
@@ -214,9 +220,6 @@ router.put("/:username", updateUser);
  */
 router.post("/:userId/assign-routes", assignRoutesToSalesman);
 
-// =====================
-// ACTIVATE USER
-// =====================
 /**
  * @swagger
  * /users/{username}/activate:
@@ -228,9 +231,6 @@ router.post("/:userId/assign-routes", assignRoutesToSalesman);
  */
 router.put("/:username/activate", activateUser);
 
-// =====================
-// DEACTIVATE USER
-// =====================
 /**
  * @swagger
  * /users/{username}/deactivate:
@@ -242,9 +242,6 @@ router.put("/:username/activate", activateUser);
  */
 router.put("/:username/deactivate", deactivateUser);
 
-// =====================
-// DELETE USER
-// =====================
 /**
  * @swagger
  * /users/{username}:

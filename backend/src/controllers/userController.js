@@ -54,6 +54,25 @@ exports.createUser = async (req, res, next) => {
 };
 
 // =====================
+// GET CURRENT USER PROFILE (for logged-in user)
+// =====================
+exports.getCurrentUserProfile = async (req, res, next) => {
+  try {
+    const user = await User.findById(req.user._id)
+      .select("-password")
+      .populate("assignedRoutes");
+
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    res.status(200).json(user);
+  } catch (err) {
+    next(err);
+  }
+};
+
+// =====================
 // GET ALL USERS
 // =====================
 exports.getAllUsers = async (req, res, next) => {
@@ -122,8 +141,9 @@ exports.assignRoutesToSalesman = async (req, res, next) => {
     next(err);
   }
 };
+
 // =====================
-// GET USER BY USERNAME
+// GET USER BY USERNAME (with access control)
 // =====================
 exports.getUserByUsername = async (req, res, next) => {
   try {
@@ -133,6 +153,15 @@ exports.getUserByUsername = async (req, res, next) => {
 
     if (!user) {
       return res.status(404).json({ message: "User not found" });
+    }
+
+    // Allow access if:
+    // 1. User is admin, OR
+    // 2. User is requesting their own profile
+    if (req.user.role !== "admin" && req.user.username !== user.username) {
+      return res.status(403).json({ 
+        message: "Access denied: You can only view your own profile" 
+      });
     }
 
     res.status(200).json(user);
@@ -229,6 +258,7 @@ exports.updateUser = async (req, res, next) => {
     next(err);
   }
 };
+
 // =====================
 // ACTIVATE USER
 // =====================
@@ -290,3 +320,9 @@ exports.deleteUser = async (req, res, next) => {
     next(err);
   }
 };
+
+// =====================
+// EXPORT ALL FUNCTIONS
+// =====================
+// Note: Since we're using exports.functionName = ..., we don't need a separate module.exports
+// The functions are already attached to exports. Just make sure all are properly exported.

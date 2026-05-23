@@ -1,3 +1,4 @@
+// models/Account.model.js
 const mongoose = require("mongoose");
 
 const accountSchema = new mongoose.Schema(
@@ -5,58 +6,64 @@ const accountSchema = new mongoose.Schema(
     date: {
       type: Date,
       required: true,
-      default: Date.now
+      default: Date.now,
     },
     invoiceNo: {
       type: String,
-      required: true
+      required: true,
+      trim: true,
     },
     description: {
       type: String,
-      required: true
+      required: true,
+      trim: true,
     },
     income: {
       type: Number,
-      default: 0
+      default: 0,
+      min: 0,
     },
     expense: {
       type: Number,
-      default: 0
+      default: 0,
+      min: 0,
     },
     totalAmount: {
       type: Number,
-      default: 0
+      default: 0,
     },
     balance: {
       type: Number,
-      required: true
+      default: 0,
     },
-    // Which module created this transaction
     sourceModule: {
       type: String,
-      enum: ["expense", "sales", "salary"],
-      required: true
+      enum: ["sales", "payment", "expense", "salary", "advance", "production"],
+      required: true,
     },
     sourceId: {
       type: mongoose.Schema.Types.ObjectId,
-      required: true
+      required: true,
+      refPath: "sourceModule",
     },
     enteredBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
-      required: true
+      required: true,
     },
     notes: {
       type: String,
-      default: ""
-    }
+      trim: true,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// Indexes for faster queries
+// Index for faster queries
 accountSchema.index({ date: -1 });
-accountSchema.index({ sourceModule: 1 });
+accountSchema.index({ sourceModule: 1, sourceId: 1 });
 accountSchema.index({ invoiceNo: 1 });
 
 module.exports = mongoose.model("Account", accountSchema);

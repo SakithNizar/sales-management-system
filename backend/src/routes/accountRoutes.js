@@ -1,3 +1,4 @@
+// routes/accountRoutes.js
 const express = require("express");
 const router = express.Router();
 
@@ -5,7 +6,10 @@ const {
   getDashboardSummary,
   getAllTransactions,
   getFilteredTransactions,
-  getMonthlyReport
+  getTransactionById,
+  deleteTransaction,
+  getMonthlyReport,
+  getYearlyReport
 } = require("../controllers/accountController");
 
 const { protect, restrictTo } = require("../middlewares/authMiddleware");
@@ -19,8 +23,11 @@ router.get("/dashboard", getDashboardSummary);
 // Transactions
 router.get("/transactions", getAllTransactions);
 router.get("/transactions/filter", getFilteredTransactions);
+router.get("/transactions/:id", getTransactionById);
+router.delete("/transactions/:id", deleteTransaction);
 
 // Reports
 router.get("/report/monthly", getMonthlyReport);
+router.get("/report/yearly", getYearlyReport);
 
 module.exports = router;

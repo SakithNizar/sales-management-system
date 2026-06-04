@@ -26,13 +26,6 @@ exports.createSalary = async (req, res) => {
       });
     }
 
-    if (!salaryPaid || salaryPaid <= 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Valid salary amount is required"
-      });
-    }
-
     // 1. Check staff exists
     const staff = await User.findById(staffId);
     if (!staff) {
@@ -42,20 +35,42 @@ exports.createSalary = async (req, res) => {
       });
     }
 
-    // 2. Get basic salary (add this field to User model if not exists)
+    // 2. Get basic salary from User model
     const basicSalary = staff.basicSalary || 0;
+    
+    if (basicSalary === 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Staff ${staff.fullName} does not have a basic salary set. Please update their profile first.`
+      });
+    }
 
-    // 3. Get all advances for this staff
-    const advances = await Advance.find({ staffId });
-
-    // 4. Calculate total advance
+    // 3. Get all advances for this staff for the current month only
+    const advances = await Advance.find({ 
+      staffId,
+      month: month // You need to add month field to Advance model
+    });
+    
     const totalAdvance = advances.reduce((sum, item) => sum + item.amount, 0);
 
-    // 5. Calculations
-    const totalPaid = totalAdvance + salaryPaid;
-    const balance = basicSalary - totalPaid;
+    // 4. Calculate amounts correctly
+    let finalSalaryPaid;
+    let totalPaid;
+    let balance;
 
-    // 6. Check for duplicate (same staff + same month)
+    if (salaryPaid && salaryPaid > 0) {
+      // If admin manually enters salary paid amount
+      finalSalaryPaid = salaryPaid;
+      totalPaid = totalAdvance + finalSalaryPaid;
+      balance = basicSalary - totalPaid;
+    } else {
+      // Auto-calculate: Salary paid = Basic salary - advances taken
+      finalSalaryPaid = basicSalary - totalAdvance;
+      totalPaid = basicSalary; // Total staff receives = full basic salary
+      balance = 0; // Fully paid
+    }
+
+    // 5. Check for duplicate (same staff + same month)
     const existingSalary = await Salary.findOne({ staffId, month });
     if (existingSalary) {
       return res.status(400).json({
@@ -64,17 +79,17 @@ exports.createSalary = async (req, res) => {
       });
     }
 
-    // 7. Generate payment number
+    // 6. Generate payment number
     const paymentNo = `SAL-${Date.now()}`;
 
-    // 8. Create salary record
+    // 7. Create salary record
     const salary = await Salary.create({
       staffId,
       month,
       salaryDate: salaryDate || new Date(),
       basicSalary,
       advancePaid: totalAdvance,
-      salaryPaid,
+      salaryPaid: finalSalaryPaid,
       totalPaid,
       balance,
       paymentNo,
@@ -105,12 +120,19 @@ exports.createSalary = async (req, res) => {
 
     // Populate staff details for response
     const populatedSalary = await Salary.findById(salary._id)
-      .populate("staffId", "fullName username role");
+      .populate("staffId", "fullName username role basicSalary");
 
     res.status(201).json({
       success: true,
       message: "Salary created successfully",
-      salary: populatedSalary
+      salary: populatedSalary,
+      summary: {
+        basicSalary,
+        totalAdvance,
+        salaryPaid: finalSalaryPaid,
+        totalPaid,
+        balance
+      }
     });
   } catch (error) {
     console.error("Error in createSalary:", error);
@@ -127,7 +149,7 @@ exports.createSalary = async (req, res) => {
 exports.getAllSalaries = async (req, res) => {
   try {
     const salaries = await Salary.find()
-      .populate("staffId", "fullName username role")
+      .populate("staffId", "fullName username role basicSalary")
       .sort({ createdAt: -1 });
 
     res.json({
@@ -158,7 +180,7 @@ exports.getSalaryByStaff = async (req, res) => {
     }
 
     const salaries = await Salary.find({ staffId })
-      .populate("staffId", "fullName username role")
+      .populate("staffId", "fullName username role basicSalary")
       .sort({ salaryDate: -1 });
 
     res.json({
@@ -182,7 +204,7 @@ exports.getSalaryById = async (req, res) => {
     const { id } = req.params;
 
     const salary = await Salary.findById(id)
-      .populate("staffId", "fullName username role")
+      .populate("staffId", "fullName username role basicSalary")
       .populate("createdBy", "fullName username");
 
     if (!salary) {
@@ -223,7 +245,7 @@ exports.updateSalary = async (req, res) => {
 
     const oldTotalPaid = salary.totalPaid;
     
-    // Recalculate
+    // Recalculate with new salaryPaid
     const totalPaid = salary.advancePaid + salaryPaid;
     const balance = salary.basicSalary - totalPaid;
 
@@ -231,7 +253,7 @@ exports.updateSalary = async (req, res) => {
       id,
       { salaryPaid, totalPaid, balance, remarks },
       { new: true }
-    ).populate("staffId", "fullName username role");
+    ).populate("staffId", "fullName username role basicSalary");
 
     // =====================
     // UPDATE ACCOUNT LEDGER IF AMOUNT CHANGED
@@ -327,9 +349,10 @@ exports.getMonthlyReport = async (req, res) => {
     }
 
     const salaries = await Salary.find({ month })
-      .populate("staffId", "fullName username role");
+      .populate("staffId", "fullName username role basicSalary");
 
     const totalStaff = salaries.length;
+    const totalBasicSalary = salaries.reduce((sum, s) => sum + s.basicSalary, 0);
     const totalSalary = salaries.reduce((sum, s) => sum + s.salaryPaid, 0);
     const totalAdvance = salaries.reduce((sum, s) => sum + s.advancePaid, 0);
     const totalPaid = salaries.reduce((sum, s) => sum + s.totalPaid, 0);
@@ -340,6 +363,7 @@ exports.getMonthlyReport = async (req, res) => {
       report: {
         month,
         totalStaff,
+        totalBasicSalary,
         totalSalary,
         totalAdvance,
         totalPaid,
@@ -368,6 +392,10 @@ exports.getDashboardSummary = async (req, res) => {
 
     const currentMonthSalaries = await Salary.find({ month: currentMonth });
 
+    const totalBasicSalary = currentMonthSalaries.reduce(
+      (sum, s) => sum + s.basicSalary,
+      0
+    );
     const totalSalaryThisMonth = currentMonthSalaries.reduce(
       (sum, s) => sum + s.salaryPaid,
       0
@@ -388,6 +416,7 @@ exports.getDashboardSummary = async (req, res) => {
     res.json({
       success: true,
       dashboard: {
+        totalBasicSalary,
         totalSalaryThisMonth,
         totalAdvanceGiven,
         totalPaid,
@@ -413,7 +442,7 @@ exports.getYearlySummary = async (req, res) => {
 
     const salaries = await Salary.find({
       month: { $regex: currentYear, $options: "i" }
-    }).populate("staffId", "fullName username role");
+    }).populate("staffId", "fullName username role basicSalary");
 
     const monthlyData = [];
     const months = ["January", "February", "March", "April", "May", "June", 
@@ -425,6 +454,7 @@ exports.getYearlySummary = async (req, res) => {
       
       monthlyData.push({
         month,
+        totalBasicSalary: monthSalaries.reduce((sum, s) => sum + s.basicSalary, 0),
         totalSalary: monthSalaries.reduce((sum, s) => sum + s.salaryPaid, 0),
         totalAdvance: monthSalaries.reduce((sum, s) => sum + s.advancePaid, 0),
         totalPaid: monthSalaries.reduce((sum, s) => sum + s.totalPaid, 0),
@@ -432,6 +462,7 @@ exports.getYearlySummary = async (req, res) => {
       });
     }
 
+    const totalYearlyBasicSalary = monthlyData.reduce((sum, m) => sum + m.totalBasicSalary, 0);
     const totalYearlySalary = monthlyData.reduce((sum, m) => sum + m.totalSalary, 0);
     const totalYearlyAdvance = monthlyData.reduce((sum, m) => sum + m.totalAdvance, 0);
     const totalYearlyPaid = monthlyData.reduce((sum, m) => sum + m.totalPaid, 0);
@@ -440,6 +471,7 @@ exports.getYearlySummary = async (req, res) => {
       success: true,
       year: currentYear,
       summary: {
+        totalYearlyBasicSalary,
         totalYearlySalary,
         totalYearlyAdvance,
         totalYearlyPaid

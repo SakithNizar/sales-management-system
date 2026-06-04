@@ -6,7 +6,7 @@ const Route = require("../models/route.model");
 // =====================
 exports.createUser = async (req, res, next) => {
   try {
-    const { fullName, username, password, phoneNumber, email, role } = req.body;
+    const { fullName, username, password, phoneNumber, email, role, basicSalary } = req.body;
 
     if (!fullName || !username || !password || !role) {
       return res.status(400).json({
@@ -40,6 +40,7 @@ exports.createUser = async (req, res, next) => {
       phoneNumber,
       email,
       role,
+      basicSalary: basicSalary || 0,
       status: "active",
     });
 
@@ -171,7 +172,7 @@ exports.getUserByUsername = async (req, res, next) => {
 };
 
 // =====================
-// UPDATE USER (NO ROUTE LOGIC)
+// UPDATE USER (UPDATED WITH basicSalary)
 // =====================
 exports.updateUser = async (req, res, next) => {
   try {
@@ -188,7 +189,8 @@ exports.updateUser = async (req, res, next) => {
       email,
       password,
       role,
-      status
+      status,
+      basicSalary
     } = req.body;
 
     // =====================
@@ -246,12 +248,28 @@ exports.updateUser = async (req, res, next) => {
     if (password) user.password = password; // hashed in pre-save hook
     if (role) user.role = role;
     if (status) user.status = status;
+    
+    // =====================
+    // Basic Salary update
+    // =====================
+    if (basicSalary !== undefined) {
+      if (basicSalary < 0) {
+        return res.status(400).json({ 
+          message: "Basic salary cannot be negative" 
+        });
+      }
+      user.basicSalary = basicSalary;
+    }
 
     await user.save();
 
+    // Return user without password
+    const userResponse = user.toObject();
+    delete userResponse.password;
+
     res.status(200).json({
       message: "User updated successfully",
-      user
+      user: userResponse
     });
 
   } catch (err) {
@@ -322,7 +340,89 @@ exports.deleteUser = async (req, res, next) => {
 };
 
 // =====================
+// BULK UPDATE BASIC SALARY (Admin utility)
+// =====================
+exports.bulkUpdateBasicSalary = async (req, res, next) => {
+  try {
+    const { updates } = req.body; // Array of { userId, basicSalary }
+    
+    if (!updates || !Array.isArray(updates)) {
+      return res.status(400).json({
+        message: "Please provide an array of updates with userId and basicSalary"
+      });
+    }
+
+    const results = {
+      success: [],
+      failed: []
+    };
+
+    for (const update of updates) {
+      try {
+        const user = await User.findById(update.userId);
+        if (!user) {
+          results.failed.push({
+            userId: update.userId,
+            reason: "User not found"
+          });
+          continue;
+        }
+
+        if (update.basicSalary < 0) {
+          results.failed.push({
+            userId: update.userId,
+            reason: "Basic salary cannot be negative"
+          });
+          continue;
+        }
+
+        user.basicSalary = update.basicSalary;
+        await user.save();
+        
+        results.success.push({
+          userId: update.userId,
+          username: user.username,
+          basicSalary: user.basicSalary
+        });
+      } catch (err) {
+        results.failed.push({
+          userId: update.userId,
+          reason: err.message
+        });
+      }
+    }
+
+    res.status(200).json({
+      message: "Bulk salary update completed",
+      results
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// =====================
+// GET ALL STAFF WITH BASIC SALARY (for dropdown in salary creation)
+// =====================
+exports.getAllStaffWithSalary = async (req, res, next) => {
+  try {
+    const staff = await User.find({ 
+      role: { $in: ["salesman", "production_manager", "store_manager"] },
+      status: "active"
+    })
+    .select("fullName username basicSalary role status")
+    .sort("fullName");
+
+    res.status(200).json({
+      success: true,
+      count: staff.length,
+      staff: staff
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// =====================
 // EXPORT ALL FUNCTIONS
 // =====================
-// Note: Since we're using exports.functionName = ..., we don't need a separate module.exports
-// The functions are already attached to exports. Just make sure all are properly exported.

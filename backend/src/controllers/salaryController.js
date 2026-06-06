@@ -2,7 +2,7 @@
 const Salary = require("../models/Salary.model");
 const Advance = require("../models/Advance.model");
 const User = require("../models/User.model");
-const { addTransaction } = require("../services/accountService");
+const { addTransaction, updateTransaction } = require("../services/accountService");
 
 // ===============================
 // CREATE SALARY (ADMIN ONLY)
@@ -10,6 +10,8 @@ const { addTransaction } = require("../services/accountService");
 exports.createSalary = async (req, res) => {
   try {
     const { staffId, month, salaryDate, salaryPaid, remarks } = req.body;
+
+    console.log("Creating salary with:", { staffId, month, salaryDate, salaryPaid });
 
     // Validate required fields
     if (!staffId) {
@@ -48,10 +50,11 @@ exports.createSalary = async (req, res) => {
     // 3. Get all advances for this staff for the current month only
     const advances = await Advance.find({ 
       staffId,
-      month: month // You need to add month field to Advance model
+      month: month
     });
     
     const totalAdvance = advances.reduce((sum, item) => sum + item.amount, 0);
+    console.log(`Found ${advances.length} advances for ${staff.fullName} in ${month}, total: ${totalAdvance}`);
 
     // 4. Calculate amounts correctly
     let finalSalaryPaid;
@@ -65,10 +68,13 @@ exports.createSalary = async (req, res) => {
       balance = basicSalary - totalPaid;
     } else {
       // Auto-calculate: Salary paid = Basic salary - advances taken
-      finalSalaryPaid = basicSalary - totalAdvance;
-      totalPaid = basicSalary; // Total staff receives = full basic salary
-      balance = 0; // Fully paid
+      finalSalaryPaid = Math.max(0, basicSalary - totalAdvance);
+      totalPaid = basicSalary;
+      balance = 0;
     }
+
+    // Ensure balance is not negative
+    balance = Math.max(0, balance);
 
     // 5. Check for duplicate (same staff + same month)
     const existingSalary = await Salary.findOne({ staffId, month });
@@ -97,8 +103,10 @@ exports.createSalary = async (req, res) => {
       createdBy: req.user._id
     });
 
+    console.log(`✅ Salary created for ${staff.fullName} - Basic: ${basicSalary}, Advance: ${totalAdvance}, Paid: ${finalSalaryPaid}, Total: ${totalPaid}`);
+
     // =====================
-    // ADD TO ACCOUNT LEDGER
+    // ADD TO ACCOUNT LEDGER - RECORD ONLY THE ACTUAL SALARY PAID
     // =====================
     try {
       await addTransaction({
@@ -106,16 +114,15 @@ exports.createSalary = async (req, res) => {
         invoiceNo: paymentNo,
         description: `Salary payment - ${staff.fullName} for ${month}`,
         income: 0,
-        expense: totalPaid,
+        expense: finalSalaryPaid,
         sourceModule: "salary",
         sourceId: salary._id,
         enteredBy: req.user._id,
-        notes: remarks || `Monthly salary for ${month}`
+        notes: remarks || `Monthly salary for ${month} (Advance deducted: ${totalAdvance})`
       });
-      console.log(`✅ Salary transaction added to accounts for ${staff.fullName} - LKR ${totalPaid}`);
+      console.log(`✅ Salary transaction added to accounts for ${staff.fullName} - LKR ${finalSalaryPaid} (Cash paid, Advance: ${totalAdvance})`);
     } catch (accountErr) {
       console.error("Failed to add salary to account ledger:", accountErr);
-      // Don't fail the salary creation if account recording fails
     }
 
     // Populate staff details for response
@@ -228,12 +235,14 @@ exports.getSalaryById = async (req, res) => {
 };
 
 // ===============================
-// UPDATE SALARY
+// UPDATE SALARY - FIXED WITH PROPER ACCOUNT UPDATE
 // ===============================
 exports.updateSalary = async (req, res) => {
   try {
     const { id } = req.params;
     const { salaryPaid, remarks } = req.body;
+
+    console.log("Updating salary with:", { id, salaryPaid, remarks });
 
     const salary = await Salary.findById(id);
     if (!salary) {
@@ -243,41 +252,84 @@ exports.updateSalary = async (req, res) => {
       });
     }
 
+    const oldSalaryPaid = salary.salaryPaid;
     const oldTotalPaid = salary.totalPaid;
     
     // Recalculate with new salaryPaid
-    const totalPaid = salary.advancePaid + salaryPaid;
-    const balance = salary.basicSalary - totalPaid;
+    const newTotalPaid = salary.advancePaid + salaryPaid;
+    const newBalance = Math.max(0, salary.basicSalary - newTotalPaid);
+
+    console.log(`Updating: Old Paid: ${oldSalaryPaid}, New Paid: ${salaryPaid}, Old Total: ${oldTotalPaid}, New Total: ${newTotalPaid}`);
 
     const updated = await Salary.findByIdAndUpdate(
       id,
-      { salaryPaid, totalPaid, balance, remarks },
+      { 
+        salaryPaid: salaryPaid, 
+        totalPaid: newTotalPaid, 
+        balance: newBalance, 
+        remarks: remarks || salary.remarks 
+      },
       { new: true }
     ).populate("staffId", "fullName username role basicSalary");
 
     // =====================
-    // UPDATE ACCOUNT LEDGER IF AMOUNT CHANGED
+    // UPDATE ACCOUNT LEDGER USING THE SERVICE FUNCTION
     // =====================
-    if (oldTotalPaid !== totalPaid) {
+    if (oldSalaryPaid !== salaryPaid) {
       try {
         const Account = require("../models/Account.model");
-        await Account.findOneAndUpdate(
-          { sourceModule: "salary", sourceId: salary._id },
-          { 
-            expense: totalPaid,
-            notes: remarks || `Salary updated - ${salary.month}`
-          }
-        );
-        console.log(`✅ Salary account transaction updated: ${salary.paymentNo} - Amount changed from ${oldTotalPaid} to ${totalPaid}`);
+        const accountTransaction = await Account.findOne({ 
+          sourceModule: "salary", 
+          sourceId: salary._id 
+        });
+        
+        if (accountTransaction) {
+          // Use updateTransaction service to properly update balance
+          await updateTransaction(accountTransaction._id, {
+            expense: salaryPaid,
+            notes: remarks || `Salary updated - ${salary.month} (Advance: ${salary.advancePaid})`,
+            description: `Salary payment updated - ${updated.staffId?.fullName} for ${salary.month}`
+          });
+          console.log(`✅ Salary account transaction updated via service: ${salary.paymentNo} - Amount changed from ${oldSalaryPaid} to ${salaryPaid}`);
+        } else {
+          // If no account record exists, create one
+          console.log(`No account record found for salary ${salary.paymentNo}, creating new one`);
+          await addTransaction({
+            date: salary.salaryDate,
+            invoiceNo: salary.paymentNo,
+            description: `Salary payment - ${updated.staffId?.fullName} for ${salary.month}`,
+            income: 0,
+            expense: salaryPaid,
+            sourceModule: "salary",
+            sourceId: salary._id,
+            enteredBy: req.user._id,
+            notes: remarks || `Monthly salary for ${salary.month} (Advance deducted: ${salary.advancePaid})`
+          });
+          console.log(`✅ New salary account transaction created: ${salary.paymentNo}`);
+        }
       } catch (accountErr) {
         console.error("Failed to update account ledger:", accountErr);
       }
+    } else {
+      console.log("Salary amount unchanged, skipping account update");
     }
+
+    // Populate staff details for response
+    const populatedSalary = await Salary.findById(updated._id)
+      .populate("staffId", "fullName username role basicSalary");
 
     res.json({
       success: true,
       message: "Salary updated successfully",
-      salary: updated
+      salary: populatedSalary,
+      changes: {
+        oldSalaryPaid,
+        newSalaryPaid: salaryPaid,
+        oldTotalPaid,
+        newTotalPaid,
+        oldBalance: salary.balance,
+        newBalance
+      }
     });
   } catch (error) {
     console.error("Error in updateSalary:", error);
@@ -303,6 +355,8 @@ exports.deleteSalary = async (req, res) => {
       });
     }
 
+    console.log(`Deleting salary: ${salary.paymentNo} - Amount: ${salary.salaryPaid}`);
+
     // =====================
     // DELETE FROM ACCOUNT LEDGER
     // =====================
@@ -314,6 +368,8 @@ exports.deleteSalary = async (req, res) => {
       });
       if (deleted.deletedCount > 0) {
         console.log(`✅ Salary account transaction deleted: ${salary.paymentNo}`);
+      } else {
+        console.log(`No account transaction found for salary: ${salary.paymentNo}`);
       }
     } catch (accountErr) {
       console.error("Failed to delete from account ledger:", accountErr);

@@ -19,6 +19,8 @@ const {
   getAllAdvances,
   getAdvanceById,
   getAdvancesByStaff,
+  getAdvancesByStaffAndMonth,
+  getAdvancesByMonth,
   getStaffAdvanceTotal,
   updateAdvance,
   deleteAdvance
@@ -54,7 +56,6 @@ const { protect, restrictTo } = require("../middlewares/authMiddleware");
  *             required:
  *               - staffId
  *               - month
- *               - salaryPaid
  *             properties:
  *               staffId:
  *                 type: string
@@ -104,7 +105,7 @@ router.get("/salary", protect, restrictTo("admin"), getAllSalaries);
 
 /**
  * @swagger
- * /salary/salary/{staffId}:
+ * /salary/salary/staff/{staffId}:
  *   get:
  *     summary: Get salary payments by staff ID
  *     tags: [Salary & Advances]
@@ -228,6 +229,7 @@ router.delete("/salary/:id", protect, restrictTo("admin"), deleteSalary);
  *             required:
  *               - staffId
  *               - amount
+ *               - month
  *             properties:
  *               staffId:
  *                 type: string
@@ -239,6 +241,9 @@ router.delete("/salary/:id", protect, restrictTo("admin"), deleteSalary);
  *                 type: string
  *                 format: date
  *                 example: "2025-01-15"
+ *               month:
+ *                 type: string
+ *                 example: "January 2025"
  *               notes:
  *                 type: string
  *                 example: "Emergency advance"
@@ -249,6 +254,8 @@ router.delete("/salary/:id", protect, restrictTo("admin"), deleteSalary);
  *         description: Validation error
  *       401:
  *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (Admin only)
  */
 router.post("/advance", protect, restrictTo("admin"), createAdvance);
 
@@ -263,6 +270,10 @@ router.post("/advance", protect, restrictTo("admin"), createAdvance);
  *     responses:
  *       200:
  *         description: List of all advance payments
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.get("/advance", protect, restrictTo("admin"), getAllAdvances);
 
@@ -307,14 +318,80 @@ router.get("/advance/:id", protect, restrictTo("admin"), getAdvanceById);
  *     responses:
  *       200:
  *         description: Advance records for the staff
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Staff not found
  */
 router.get("/advance/staff/:staffId", protect, restrictTo("admin"), getAdvancesByStaff);
 
 /**
  * @swagger
+ * /salary/advance/staff/{staffId}/month/{month}:
+ *   get:
+ *     summary: Get advances by staff ID and specific month
+ *     tags: [Salary & Advances]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: staffId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Staff ID
+ *       - in: path
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Month (e.g., "December 2024")
+ *     responses:
+ *       200:
+ *         description: Advance records for the staff in the specified month
+ *       400:
+ *         description: Missing required parameters
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get("/advance/staff/:staffId/month/:month", protect, restrictTo("admin"), getAdvancesByStaffAndMonth);
+
+/**
+ * @swagger
+ * /salary/advance/month/{month}:
+ *   get:
+ *     summary: Get all advances for a specific month across all staff
+ *     tags: [Salary & Advances]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: month
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Month (e.g., "December 2024")
+ *     responses:
+ *       200:
+ *         description: All advance records for the specified month
+ *       400:
+ *         description: Month parameter is required
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ */
+router.get("/advance/month/:month", protect, restrictTo("admin"), getAdvancesByMonth);
+
+/**
+ * @swagger
  * /salary/advance/staff/{staffId}/total:
  *   get:
- *     summary: Get total advances for a staff member
+ *     summary: Get total advances for a staff member (all time, with month-wise breakdown)
  *     tags: [Salary & Advances]
  *     security:
  *       - bearerAuth: []
@@ -327,7 +404,13 @@ router.get("/advance/staff/:staffId", protect, restrictTo("admin"), getAdvancesB
  *         description: Staff ID
  *     responses:
  *       200:
- *         description: Total advance amount for the staff
+ *         description: Total advance amount for the staff with month-wise breakdown
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
+ *       404:
+ *         description: Staff not found
  */
 router.get("/advance/staff/:staffId/total", protect, restrictTo("admin"), getStaffAdvanceTotal);
 
@@ -359,11 +442,20 @@ router.get("/advance/staff/:staffId/total", protect, restrictTo("admin"), getSta
  *               date:
  *                 type: string
  *                 format: date
+ *               month:
+ *                 type: string
+ *                 example: "January 2025"
  *               notes:
  *                 type: string
  *     responses:
  *       200:
  *         description: Advance updated successfully
+ *       400:
+ *         description: Validation error
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       404:
  *         description: Advance not found
  */
@@ -387,6 +479,10 @@ router.put("/advance/:id", protect, restrictTo("admin"), updateAdvance);
  *     responses:
  *       200:
  *         description: Advance deleted successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  *       404:
  *         description: Advance not found
  */
@@ -419,6 +515,9 @@ router.delete("/advance/:id", protect, restrictTo("admin"), deleteAdvance);
  *                 dashboard:
  *                   type: object
  *                   properties:
+ *                     totalBasicSalary:
+ *                       type: number
+ *                       example: 150000
  *                     totalSalaryThisMonth:
  *                       type: number
  *                       example: 150000
@@ -431,6 +530,10 @@ router.delete("/advance/:id", protect, restrictTo("admin"), deleteAdvance);
  *                     pendingBalance:
  *                       type: number
  *                       example: 25000
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden (Admin only)
  */
 router.get("/dashboard", protect, restrictTo("admin"), getDashboardSummary);
 
@@ -454,6 +557,10 @@ router.get("/dashboard", protect, restrictTo("admin"), getDashboardSummary);
  *         description: Monthly report generated successfully
  *       400:
  *         description: Month parameter is required
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.get("/report/monthly", protect, restrictTo("admin"), getMonthlyReport);
 
@@ -475,6 +582,10 @@ router.get("/report/monthly", protect, restrictTo("admin"), getMonthlyReport);
  *     responses:
  *       200:
  *         description: Yearly summary generated successfully
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Forbidden
  */
 router.get("/report/yearly", protect, restrictTo("admin"), getYearlySummary);
 

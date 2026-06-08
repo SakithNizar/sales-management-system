@@ -62,6 +62,18 @@ const userSchema = new mongoose.Schema(
       }
     },
 
+    basicSalary: {
+      type: Number,
+      default: 0,
+      min: [0, "Basic salary cannot be negative"],
+      validate: {
+        validator: function(value) {
+          return value >= 0;
+        },
+        message: "Basic salary must be a positive number"
+      }
+    },
+
     role: {
       type: String,
       enum: ["admin", "production_manager", "salesman", "store_manager"],
@@ -75,13 +87,11 @@ const userSchema = new mongoose.Schema(
     },
 
     assignedRoutes: [
-  {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Route"
-  }
-]
-
-  
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Route"
+      }
+    ]
   },
   {
     timestamps: true

@@ -14,11 +14,19 @@ const advanceSchema = new mongoose.Schema(
     },
     date: {
       type: Date,
+      required: true,
+      default: Date.now
+    },
+    month: {
+      type: String,
       required: true
     },
     paymentNo: {
       type: String,
-      unique: true
+      unique: true,
+      default: function() {
+        return `ADV-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+      }
     },
     notes: {
       type: String,
@@ -29,7 +37,9 @@ const advanceSchema = new mongoose.Schema(
       ref: "User"
     }
   },
-  { timestamps: true }
+  { 
+    timestamps: true 
+  }
 );
 
 module.exports = mongoose.model("Advance", advanceSchema);
